@@ -21,8 +21,8 @@ echo "Install CA..."
 
 sudo cp ./nginx.key /etc/nginx/proxy/nginx.key
 sudo cp ./nginx.pem /etc/nginx/proxy/nginx.pem
-sudo cp ./nginx.pem /etc/ca-certificates/trust-source/anchors/nginx.pem
-sudo cp ./proxy-ca.pem /etc/ca-certificates/trust-source/anchors/ca.pem
+sudo cp ./nginx.pem /etc/ca-certificates/trust-source/anchors/nginx-proxy-nginx.pem
+sudo cp ./proxy-ca.pem /etc/ca-certificates/trust-source/anchors/nginx-proxy-ca.pem
 sudo update-ca-trust
 
 echo "Install nginx config..."
