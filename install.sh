@@ -1,44 +1,72 @@
 #!/bin/bash
 
-echo -e "Your email: \c"
+CA_LIFE=730
+EMAIL=""
+PROXY_PATH="/etc/nginx/proxy"
 
-read email
+gen_ca() {
+	echo "Gen CA..."
 
-SUBJ="/C=CN/ST=ST$RANDOM/O=O$RANDOM/OU=OU$RANDOM/CN=CN$RANDOM/emailAddress=$email"
+	if [ -z "$EMAIL" ]; then
+		read -p "Your email: " email
+	fi
+	local SUBJ="/C=CN/ST=ST$RANDOM/O=O$RANDOM/OU=OU$RANDOM/CN=CN$RANDOM/emailAddress=$email"
 
-echo "Gen CA..."
+	openssl genrsa 2048 > proxy-ca.key
+	openssl req -new -x509 \
+		-days $CA_LIFE \
+		-key proxy-ca.key -out proxy-ca.pem \
+		-subj $SUBJ \
+		-extensions v3_ca
+	openssl genrsa 2048 > nginx.key
+	openssl req -new -nodes \
+		-key nginx.key -out nginx.csr \
+		-subj $SUBJ
+	openssl x509 -req -days $CA_LIFE \
+			-in nginx.csr -out nginx.pem \
+			-CA proxy-ca.pem -CAkey proxy-ca.key \
+			-set_serial 0 \
+			-extensions CUSTOM_STRING_LIKE_SAN_KU\
+			-extfile extfile.conf
+}
 
-openssl genrsa 2048 > proxy-ca.key
-openssl req -new -x509 -days 730 -key proxy-ca.key -out proxy-ca.pem -subj $SUBJ -extensions v3_ca
-openssl genrsa 2048 > nginx.key
-openssl req -new -nodes -key nginx.key -out nginx.csr -subj $SUBJ
-openssl x509 -req -days 730 \
-    -in nginx.csr -out nginx.pem \
-    -CA proxy-ca.pem -CAkey proxy-ca.key -set_serial 0 -extensions CUSTOM_STRING_LIKE_SAN_KU\
-    -extfile extfile.conf
+install_ca() {
+	echo "Install CA..."
+	sudo mkdir -p "$PROXY_PATH"
+	sudo cp ./nginx.key /etc/nginx/proxy/nginx.key
+	sudo cp ./nginx.pem /etc/nginx/proxy/nginx.pem
+	sudo cp ./nginx.pem /etc/ca-certificates/trust-source/anchors/nginx-proxy-nginx.pem
+	sudo cp ./proxy-ca.pem /etc/ca-certificates/trust-source/anchors/nginx-proxy-ca.pem
+	sudo update-ca-trust
+}
 
-echo "Install CA..."
+install_conf() {
+	echo "Install nginx config..."
 
-sudo cp ./nginx.key /etc/nginx/proxy/nginx.key
-sudo cp ./nginx.pem /etc/nginx/proxy/nginx.pem
-sudo cp ./nginx.pem /etc/ca-certificates/trust-source/anchors/nginx-proxy-nginx.pem
-sudo cp ./proxy-ca.pem /etc/ca-certificates/trust-source/anchors/nginx-proxy-ca.pem
-sudo update-ca-trust
+	sudo mkdir -p "$PROXY_PATH"
+	sudo cp ./cert.conf\
+		./github.conf\
+		./github-upstreams.conf\
+		./shared-proxy-params-1.conf\
+		./shared-proxy-params-2.conf\
+		./pixiv.conf\
+		./proxy.conf\
+		"$PROXY_PATH"
 
-echo "Install nginx config..."
+	echo "Edit hosts file..."
+	cat hosts | sudo tee -a /etc/hosts
 
-path="/etc/nginx/proxy"
+	echo "Put 'include proxy/proxy.conf;' to your nginx config in 'http' section"
+	echo "Please restart your nginx!"
+}
 
-sudo mkdir -p "$path"
-sudo cp ./cert.conf\
-	./github.conf\
-	./github-upstreams.conf\
-	./shared-proxy-params.conf\
-	./proxy.conf\
-	"$path"
-
-echo "Edit hosts file..."
-sudo cat hosts >> /etc/hosts
-
-echo "Put 'include proxy/proxy.conf;' to your nginx config in 'http' section"
-echo "Please restart your nginx!"
+case "$1" in
+	-g|--gen-ca) gen_ca ;;
+	--install-ca) install_ca ;;
+	--install-conf) install_conf ;;
+	*)
+		gen_ca
+		install_ca
+		install_conf
+		;;
+esac
