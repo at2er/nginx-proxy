@@ -60,13 +60,28 @@ install_conf() {
 	echo "Please restart your nginx!"
 }
 
-case "$1" in
-	-g|--gen-ca) gen_ca ;;
-	--install-ca) install_ca ;;
-	--install-conf) install_conf ;;
-	*)
-		gen_ca
-		install_ca
-		install_conf
-		;;
-esac
+usage() {
+	cat << EOF
+usage: ./install.sh [<options>]
+
+options: -g, --gen-ca: generate ca-certificates
+         -h: usage
+         --install-ca: install ca-certificates
+         --install-conf: install configuration
+EOF
+}
+
+until [ $# -eq 0 ]; do
+	case "$1" in
+		-g|--gen-ca) gen_ca ;;
+		-h) usage ;;
+		--install-ca) install_ca ;;
+		--install-conf) install_conf ;;
+		*)
+			gen_ca
+			install_ca
+			install_conf
+			;;
+	esac
+	shift
+done
