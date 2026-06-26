@@ -33,10 +33,10 @@ gen_ca() {
 install_ca() {
 	echo "Install CA..."
 	sudo mkdir -p "$PROXY_PATH"
-	sudo cp ./nginx.key /etc/nginx/proxy/nginx.key
-	sudo cp ./nginx.pem /etc/nginx/proxy/nginx.pem
-	sudo cp ./nginx.pem /etc/ca-certificates/trust-source/anchors/nginx-proxy-nginx.pem
-	sudo cp ./proxy-ca.pem /etc/ca-certificates/trust-source/anchors/nginx-proxy-ca.pem
+	sudo cp ./nginx.key "$PROXY_PATH/nginx.key"
+	sudo cp ./nginx.pem "$PROXY_PATH/nginx.pem"
+	sudo cp ./nginx.pem /etc/ca-certificates/trust-source/anchors/nginx-proxy-nginx.crt
+	sudo cp ./proxy-ca.pem /etc/ca-certificates/trust-source/anchors/nginx-proxy-ca.crt
 	sudo update-ca-trust
 }
 
@@ -47,16 +47,14 @@ install_conf() {
 	sudo cp ./cert.conf\
 		./github.conf\
 		./github-upstreams.conf\
+		./wikipedia.conf\
 		./shared-proxy-params-1.conf\
 		./shared-proxy-params-2.conf\
-		./pixiv.conf\
-		./proxy.conf\
 		"$PROXY_PATH"
 
 	echo "Edit hosts file..."
 	cat hosts | sudo tee -a /etc/hosts
 
-	echo "Put 'include proxy/proxy.conf;' to your nginx config in 'http' section"
 	echo "Please restart your nginx!"
 }
 
